@@ -107,7 +107,7 @@ readdir(config.tv_root,
 
         // Now compress the file
         const targetFile = path.join(config.tv_root_done, path.basename(baseName)) + config.target_video_extension;
-        const result = spawn.spawnSync(compressScript, [cleanFileName, targetFile]);
+        result = spawn.spawnSync(compressScript, [cleanFileName, targetFile]);
         if (result.status !== 0) {
           console.log('Compress Failed for:' + files[i]);
           console.log(result.stdout.toString());
