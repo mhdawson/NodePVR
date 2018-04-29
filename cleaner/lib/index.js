@@ -94,7 +94,7 @@ readdir(config.tv_root,
         const baseName = files[i].substring(0,files[i].indexOf(config.new_video_extension));
 
         // Start by running comskip on the file to mark commercials
-        const result = spawn.spawnSync(commskipScript, [files[i]]);
+        let result = spawn.spawnSync(commskipScript, [files[i]]);
         if (result.status !== 0) {
           console.log('Comskip Failed for:' + files[i]);
           console.log(result.stdout.toString());
@@ -115,7 +115,7 @@ readdir(config.tv_root,
           throw(result.error);
         }
         fs.rename(files[i], baseName + config.processed_extension); 
-        //fs.unlink(cleanFileName);
+        fs.unlink(cleanFileName);
       } catch (err) {
         console.log('Failed to process:' + files[i]);
         console.log(err);
