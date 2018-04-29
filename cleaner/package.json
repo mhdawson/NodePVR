@@ -1,0 +1,19 @@
+{
+  "name": "nodepvr-cleaner",
+  "version": "0.0.1",
+  "description": "Utility to remove commercials from recording",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {
+    "recursive-readdir": "^2.2.2",
+    "xml2js": "^0.4.19"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Michael Dawson",
+  "license": "MIT"
+}
