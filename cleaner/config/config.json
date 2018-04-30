@@ -3,7 +3,7 @@
   "tv_root_done": "/mnt/tv2/download/done",
   "generated_files": ["*.edlx", "*.log", "*.logo", "*.txt"],
   "new_video_extension": ".ts",
-  "processed_extension": ".ts.clean.compressed",
+  "processed_extension": ".clean.ts.compressed",
   "clean_video_extension": ".clean",
   "target_video_extension": ".m4v",
   "deletion_delay": 14 
