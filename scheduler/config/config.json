@@ -1,0 +1,20 @@
+{
+  "sources": 
+    { "ota": {
+        "days": 5,
+        "data_file": "ota-sched.xml",
+        "channel_mapping": { "CITYDT": "CITY",
+                             "CJOHDT": "CJOH",
+                             "CBOTDT": "CBOT",
+                             "CHRODT": "CHRO",
+                             "6-1 CIIIDT6": "GLOBAL",
+                             "CHCHTD1": "CHCHDT1" 
+                           },
+        "shows": [
+          "Modern Family",
+          "Young Sheldon",
+          "The Big Bang Theory"
+        ]
+    }
+  }  
+}
