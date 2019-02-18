@@ -1,0 +1,19 @@
+{
+  "name": "nodepvr-scheduler",
+  "version": "0.0.1",
+  "description": "Utility to generate record entries with XMLTV",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "dependencies": {
+    "sax": "^1.2.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node lib/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Michael Dawson",
+  "license": "MIT"
+}
