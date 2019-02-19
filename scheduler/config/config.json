@@ -2,7 +2,8 @@
   "extraMinutes": 2,
   "sources": 
     { "ota": {
-        "days": 5,
+        "recorder": "ota-record",
+        "days": 9,
         "data_file": "ota-sched.xml",
         "channel_mapping": { "CITYDT": "CITY",
                              "CJOHDT": "CJOH",
@@ -14,7 +15,13 @@
         "shows": [
           "Modern Family",
           "Young Sheldon",
-          "The Big Bang Theory"
+          "The Big Bang Theory",
+          "22 Minutes",
+          "Survivor",
+          "Chicago Fire",
+          "The Blacklist",
+          "Manifest",
+          "Grey's Anatomy"
         ]
     }
   }  

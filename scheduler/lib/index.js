@@ -3,10 +3,11 @@ const path = require('path');
 const util = require('util');
 const exec = util.promisify(require('child_process').execFile);
 const sax = require('sax');
-const moment = require('moment');
+const moment = require('moment-timezone');
 const config = require("../config/config.json");
 
 const extraMinutes = config.extraMinutes || 2;
+const staleDays = config.staleDays || 30;
 
 
 const titleReplacements =  { "'": "",
@@ -48,16 +49,7 @@ async function parseProgramData(src, dataFile) {
   
   const programStream = sax.createStream();
   programStream.on('opentag', (node) => {
-    if ((node.name === 'PROGRAMME') && (channels[node.attributes.CHANNEL])) {
-      currentProgramme = node;
-      return;
-    }
-
-    if ((node.name === 'TITLE') && (currentProgramme)) {
-      inTitle = true;
-      return;
-    }
-
+    // for channel processing
     if (node.name === 'CHANNEL') {
       currentChannelId = node.attributes.ID;
       return;
@@ -68,12 +60,40 @@ async function parseProgramData(src, dataFile) {
       return;
     }
 
+    // for programme processing
+    if (node.name === 'PROGRAMME') {
+      currentProgramme = undefined;
+      title = undefined;
+      subTitle = undefined;
+      previouslyShown = false;
+      if (channels[node.attributes.CHANNEL]) {
+        currentProgramme = node;
+      }
+      return;
+    }
+
+    if ((node.name === 'TITLE') && (currentProgramme)) {
+      inTitle = true;
+      return;
+    }
+
     if (node.name === 'SUB-TITLE') {
       inSubTitle = true;
     }
 
-    if ((node.name === "PREVIOUSLY-SHOWN") && (node.attributes.START)) {
-      previouslyShown = true;
+    if ( title && (node.name === "PREVIOUSLY-SHOWN")) {
+      if (node.attributes.START) {
+        // its considered previously shown if the date is within staleDays days
+        const now = moment(new Date());
+        const start = moment(node.attributes.START, 'YYYYMMDDHHmmss');
+        const gap = moment.duration(now.diff(start)).asDays();
+        if (gap > staleDays) {
+          previouslyShown = true;
+        }
+      } else {
+        // no start date so assume stale
+        previouslyShown = true;
+      }
       return;
     }
   });
@@ -87,6 +107,7 @@ async function parseProgramData(src, dataFile) {
           channels[currentChannelId] = src.channel_mapping[channel];
         }
       }
+      return;
     }
 
     if (inTitle) {
@@ -95,10 +116,12 @@ async function parseProgramData(src, dataFile) {
           title = sanitizeTitle(text);
         }
       });
+      return;
     }
 
     if (inSubTitle) {
       subTitle = sanitizeTitle(text);
+      return;
     }
   });
 
@@ -117,15 +140,26 @@ async function parseProgramData(src, dataFile) {
     if (tag === 'PROGRAMME') {
       if (title && !previouslyShown) {
         const start = moment(currentProgramme.attributes.START, 'YYYYMMDDHHmmss ZZ');
-        const end = moment(currentProgramme.attributes.STOP, 'YYYYMMDDHHmmss ZZ');
-        const duration = moment.duration(end.diff(start)).asMinutes() + extraMinutes;
-        console.log(title + ' ' + title + '-' + subTitle + ' ' +  channels[currentProgramme.attributes.CHANNEL] + ' ' + duration);
-        console.log(currentProgramme);
+        if (start.isAfter(new Date())) {
+          const end = moment(currentProgramme.attributes.STOP, 'YYYYMMDDHHmmss ZZ');
+          const duration = moment.duration(end.diff(start)).asMinutes() + extraMinutes;
+          console.log(start.format('m') + ' ' +
+                      start.format('H') + ' ' +
+                      start.format('D') + ' ' +
+                      start.format('M') + ' ' +
+                      '*' + ' ' +
+                      src.recorder + ' ' +
+                      title + ' ' +
+                      title + start.format('MMDDHHmm') + '-' + subTitle + ' ' +
+                      channels[currentProgramme.attributes.CHANNEL] + ' ' +
+                      duration);
+        }
       }
 
       // cleanup
-      title = false;
-      previouslyShown = false;
+      title = undefined;
+      subTitle = undefined;
+      previouslyShown = false; 
       currentProgramme = undefined;
       return;
     }
