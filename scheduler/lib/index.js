@@ -8,6 +8,7 @@ const config = require("../config/config.json");
 
 const extraMinutes = config.extraMinutes || 2;
 const staleDays = config.staleDays || 30;
+const recordEntries = new Array();
 
 
 const titleReplacements =  { "'": "",
@@ -50,6 +51,7 @@ async function parseProgramData(src, dataFile) {
   const programStream = sax.createStream();
   programStream.on('opentag', (node) => {
     // for channel processing
+
     if (node.name === 'CHANNEL') {
       currentChannelId = node.attributes.ID;
       return;
@@ -60,7 +62,9 @@ async function parseProgramData(src, dataFile) {
       return;
     }
 
+
     // for programme processing
+
     if (node.name === 'PROGRAMME') {
       currentProgramme = undefined;
       title = undefined;
@@ -99,6 +103,9 @@ async function parseProgramData(src, dataFile) {
   });
 
   programStream.on('text', (text) => {
+
+    // for Channel processing
+
     // Record the mapping from the id used in the program data
     // to the id for the channel we need to use in the recording entry
     if (inDisplayName && currentChannelId) {
@@ -109,6 +116,9 @@ async function parseProgramData(src, dataFile) {
       }
       return;
     }
+
+
+    // for Program processing
 
     if (inTitle) {
       src.shows.forEach((nextShow) => {
@@ -126,6 +136,8 @@ async function parseProgramData(src, dataFile) {
   });
 
   programStream.on('closetag', (tag) => {
+    // for Channel processing
+
     if (tag === 'DISPLAY-NAME') {
       inDisplayName = false;
       return;
@@ -137,13 +149,16 @@ async function parseProgramData(src, dataFile) {
       return;
     }
 
+
+    // for Program processing
+
     if (tag === 'PROGRAMME') {
       if (title && !previouslyShown) {
         const start = moment(currentProgramme.attributes.START, 'YYYYMMDDHHmmss ZZ');
         if (start.isAfter(new Date())) {
           const end = moment(currentProgramme.attributes.STOP, 'YYYYMMDDHHmmss ZZ');
           const duration = moment.duration(end.diff(start)).asMinutes() + extraMinutes;
-          console.log(start.format('m') + ' ' +
+          recordEntries.push(start.format('m') + ' ' +
                       start.format('H') + ' ' +
                       start.format('D') + ' ' +
                       start.format('M') + ' ' +
@@ -185,29 +200,39 @@ async function parseProgramData(src, dataFile) {
   });
 
   fs.createReadStream(dataFile).pipe(programStream);
-
   await(parsed);
 
   console.log(channels);
+
 }
 
 async function getRecordEntries(src) {
   const dataFile = path.join(__dirname, "../data", src.data_file);
-//  await getProgramData(src, dataFile);
+  await getProgramData(src, dataFile);
   await parseProgramData(src, dataFile);
 }
 
-for (source in config.sources) {
-  console.log('Generating record entries for:' + source);
-  const src = config.sources[source];
-
-  try { 
-    getRecordEntries(src).then(() => {
-      console.log('Completed record entries for:' + source);
-    });
-  } catch (e) {
-    console.log('Failed to get program data for:');
-    console.log(e);
-    console.log(stderr);
+async function generateSchedule(resolve) {
+  for (source in config.sources) {
+    const src = config.sources[source];
+    console.log(new Date() + ' - Updated Schedule for:' + source);
+    await getRecordEntries(src);
+    console.log(new Date() + ' - Completed record entries for:' + source + '\n');
   }
+  resolve();
 }
+
+// write out the cron like file to schedule the recordings
+new Promise((resolve, reject) => {
+  generateSchedule(resolve);
+}).then(() => {
+  // ok all done write out the schedule file and generate log info
+  recordEntries.push('0 4 * * * update_schedule');
+  const finalRecordEntries = recordEntries.join('\n');
+  fs.writeFileSync(path.join('config', 'cron.config'), finalRecordEntries);
+  console.log(finalRecordEntries);
+}).catch((e) => {
+  console.log('Failed to get program data');
+  console.log(e);
+  console.log(stderr);
+});
