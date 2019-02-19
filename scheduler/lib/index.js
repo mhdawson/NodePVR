@@ -3,7 +3,30 @@ const path = require('path');
 const util = require('util');
 const exec = util.promisify(require('child_process').execFile);
 const sax = require('sax');
+const moment = require('moment');
 const config = require("../config/config.json");
+
+const extraMinutes = config.extraMinutes || 2;
+
+
+const titleReplacements =  { "'": "",
+                             ",": "",
+                             "\\.": "",
+                             " ": "_",
+                             ":": "",
+                             "\\?": "",
+                             "!": "",
+                             "\\/": "",
+                             ";": "",
+                             "\\\\": ""
+                           };
+
+function sanitizeTitle(title) {
+  for (replaceMe in titleReplacements) {
+    title = title.replace(new RegExp(replaceMe, 'g'), titleReplacements[replaceMe]);
+  }
+  return title;
+}
 
 async function getProgramData(src, dataFile) {
   const days = src.days || 5;
@@ -32,6 +55,7 @@ async function parseProgramData(src, dataFile) {
 
     if ((node.name === 'TITLE') && (currentProgramme)) {
       inTitle = true;
+      return;
     }
 
     if (node.name === 'CHANNEL') {
@@ -68,13 +92,13 @@ async function parseProgramData(src, dataFile) {
     if (inTitle) {
       src.shows.forEach((nextShow) => {
         if (text.includes(nextShow)) {
-          title = text;
+          title = sanitizeTitle(text);
         }
       });
     }
 
     if (inSubTitle) {
-      subTitle = text;
+      subTitle = sanitizeTitle(text);
     }
   });
 
@@ -92,10 +116,14 @@ async function parseProgramData(src, dataFile) {
 
     if (tag === 'PROGRAMME') {
       if (title && !previouslyShown) {
-        console.log(title + '-' + subTitle);
+        const start = moment(currentProgramme.attributes.START, 'YYYYMMDDHHmmss ZZ');
+        const end = moment(currentProgramme.attributes.STOP, 'YYYYMMDDHHmmss ZZ');
+        const duration = moment.duration(end.diff(start)).asMinutes() + extraMinutes;
+        console.log(title + ' ' + title + '-' + subTitle + ' ' +  channels[currentProgramme.attributes.CHANNEL] + ' ' + duration);
         console.log(currentProgramme);
       }
 
+      // cleanup
       title = false;
       previouslyShown = false;
       currentProgramme = undefined;

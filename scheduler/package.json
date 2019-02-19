@@ -7,7 +7,8 @@
     "lib": "lib"
   },
   "dependencies": {
-    "sax": "^1.2.4"
+    "sax": "^1.2.4",
+    "moment": "^2.24.0"
   },
   "devDependencies": {},
   "scripts": {
