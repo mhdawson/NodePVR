@@ -6,23 +6,30 @@ const MILLI_SECS_IN_MIN = 60 * 1000;
 
 class  HDHomeRunRecorder {
 
-  constructor(base, address, tuner) {
-    this.base = base;
+  constructor(address, tuner) {
     this.address = address;
     this.tuner = tuner;
     this.inUse = false;
   }
 
   sendHDHomeRunCommand(command) {
-    
+    console.log(command);
   }
 
   start(channel, time, program) {
     if (this.inUse) {
       throw new Error('Already in use');
     }
-    this.channel = channel;
-    this.program = program;
+
+    this.program = undefined; 
+    const separator = channel.indexOf('.');
+    if (separator >= 0) {
+      this.channel = channel.substring(0,separator);
+      this.program = channel.substring(separator+1);
+    } else {
+      this.channel = channel;
+    };
+
     this.startRecording();
 
     // one the requested time has elapsed stop recording
@@ -34,7 +41,7 @@ class  HDHomeRunRecorder {
 
   logAndStopRecording(logMessage) {
     // generate log
-
+    console.log(logMessage);
     this.stopRecording();
   }
 
@@ -65,25 +72,24 @@ class  HDHomeRunRecorder {
       ouput.write(this.output);
     });
     this.input.bind(0, this.address, (err) => {
-      if (err) {
-        this.logAndStopRecording('failed to do UDP listen', err);
-      }
       try {
         const port = this.input.address().port;
         // ok tell the HDHomeRun to start streaming
-        sendHDHomeRunCommand(`${this.base} set /${this.tuner}/channel auto:{this.channel}`);
+        this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/channel auto:${this.channel}`);
         if (this.program) {
-          sendHDHomeRunCOmment(`${this.base} set /${this.tuner}/program ${program}`);
+          this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/program ${this.program}`);
         }
-        sendHDHomeRunCommand(`${this.base} set /${this.tuner}/target udp://${this.address}:${port}`);
+        this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/target udp://${this.address}:${port}`);
       } catch (err) {
-        this.logAndStopRecording('failed to start HD streaming', err);
+        this.logAndStopRecording('failed to start HD streaming' + err);
       }
     });
   }
 }
 
-const recorder = new HDHomeRunRecorder('hdhomerun_config', '10.1.1.57', 'tuner1');
-recorder.start(8, 1);
+const recorder = new HDHomeRunRecorder('10.1.1.56', 'tuner1');
+const recorder2 = new HDHomeRunRecorder('10.1.1.56', 'tuner1');
+recorder.start('25', 1);
+recorder2.start('14.1', 1);
 
 
