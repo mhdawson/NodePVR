@@ -33,57 +33,69 @@ class  HDHomeRunRecorder {
     this.startRecording(filename, time);
   };
 
-  logAndStopRecording(logMessage) {
+  logAndStopRecording(logMessage, output) {
     // generate log
     console.log(logMessage);
-    this.stopRecording();
+    this.stopRecording(output);
   }
 
-  stopRecording() {
+  stopRecording(output, timer) {
     // close the input and output and make the recorder available for
     // re-use
-    this.inUse = false;
-    if (this.input) {
-      this.input.close((err) => {
-        this.input = undefined;
-        if (this.output) {
-            this.output.close();
-            this.output = undefined;
-        };
-      });
+    this.inUse--;
+    if (this.inUse <= 0) {
+      try {
+        this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/channel auto:none`);
+      } catch (err) {
+      };
+
+      if (this.input) {
+        this.input.close((err) => {
+          this.input = undefined;
+          if (output) {
+            output.close();
+          };
+        });
+      }
+    } else {
+      if (output) {
+        output.close();
+      };
     }
   }
 
   startRecording(filename, time) {
-    this.inUse = true;
-    this.input = dgram.createSocket('udp4');
-    this.input.on('error', (err) => this.logAndStopRecording('udp error:' + err));
+    this.inUse++;
+    if (this.inUse === 1) {
+      this.input = dgram.createSocket('udp4');
+    }
 
-    this.output = fs.createWriteStream(filename);
-    this.output.on('error', (err) => this.logAndStopRecording('fs write error:' + err));
-
+    const output = fs.createWriteStream(filename);
+    const timer = setTimeout(((output) => {
+      this.stopRecording(output);
+    }).bind(this, output), time * MILLI_SECS_IN_MIN);
+    output.on('error', (err) => this.logAndStopRecording('fs write error:' + err), output, timer);
     this.input.on('message', (data) => {
-      ouput.write(this.output);
+      ouput.write(data);
     });
-    this.input.bind(0, this.address, (err) => {
-      try {
-        const port = this.input.address().port;
-        // ok tell the HDHomeRun to start streaming
-        this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/channel auto:${this.channel}`);
-        if (this.program) {
-          this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/program ${this.program}`);
-        }
-        this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/target udp://${this.address}:${port}`);
+    this.input.on('error', (err) => this.logAndStopRecording('udp error:' + err), output, timer);
 
-        // one the requested time has elapsed stop recording
-        setTimeout(() => {
-          this.stopRecording();
-          console.log('recording stopped');
-        }, time * MILLI_SECS_IN_MIN);
-      } catch (err) {
-        this.logAndStopRecording('failed to start HD streaming' + err);
-      }
-    });
+    if (this.inUse === 1) { 
+      this.input.bind(0, this.address, (err) => {
+        try {
+          const port = this.input.address().port;
+          // ok tell the HDHomeRun to start streaming
+          this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/channel auto:${this.channel}`);
+          if (this.program) {
+            this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/program ${this.program}`);
+          }
+          this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/target udp://${this.address}:${port}`);
+
+        } catch (err) {
+          this.logAndStopRecording('failed to start HD streaming' + err, output, timer);
+        }
+      });
+    };
   }
 }
 
