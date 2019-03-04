@@ -8,6 +8,7 @@ class  HDHomeRunRecorder {
 
   constructor(base, address, tuner) {
     this.base = base;
+    this.address = address;
     this.tuner = tuner;
     this.inUse = false;
   }
@@ -63,8 +64,12 @@ class  HDHomeRunRecorder {
     this.input.on('message', (data) => {
       ouput.write(this.output);
     });
-    this.input.bind(() => {
+    this.input.bind(0, this.address, (err) => {
+      if (err) {
+        this.logAndStopRecording('failed to do UDP listen', err);
+      }
       try {
+        const port = this.input.address().port;
         // ok tell the HDHomeRun to start streaming
         sendHDHomeRunCommand(`${this.base} set /${this.tuner}/channel auto:{this.channel}`);
         if (this.program) {
@@ -78,7 +83,7 @@ class  HDHomeRunRecorder {
   }
 }
 
-const recorder = new HDHomeRunRecorder('test');
+const recorder = new HDHomeRunRecorder('hdhomerun_config', '10.1.1.57', 'tuner1');
 recorder.start(8, 1);
 
 
