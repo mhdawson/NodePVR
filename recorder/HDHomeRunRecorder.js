@@ -16,7 +16,7 @@ class  HDHomeRunRecorder {
     console.log(command);
   }
 
-  start(channel, time, program) {
+  start(channel, time, filename) {
     if (this.inUse) {
       throw new Error('Already in use');
     }
@@ -30,13 +30,7 @@ class  HDHomeRunRecorder {
       this.channel = channel;
     };
 
-    this.startRecording();
-
-    // one the requested time has elapsed stop recording
-    setTimeout(() => {
-      this.stopRecording();
-      console.log('recording stopped');
-    }, time * MILLI_SECS_IN_MIN);
+    this.startRecording(filename, time);
   };
 
   logAndStopRecording(logMessage) {
@@ -60,12 +54,12 @@ class  HDHomeRunRecorder {
     }
   }
 
-  startRecording() {
+  startRecording(filename, time) {
     this.inUse = true;
     this.input = dgram.createSocket('udp4');
     this.input.on('error', (err) => this.logAndStopRecording('udp error:' + err));
 
-    this.output = fs.createWriteStream('filename');
+    this.output = fs.createWriteStream(filename);
     this.output.on('error', (err) => this.logAndStopRecording('fs write error:' + err));
 
     this.input.on('message', (data) => {
@@ -80,6 +74,12 @@ class  HDHomeRunRecorder {
           this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/program ${this.program}`);
         }
         this.sendHDHomeRunCommand(`hdhomerun_config set /${this.tuner}/target udp://${this.address}:${port}`);
+
+        // one the requested time has elapsed stop recording
+        setTimeout(() => {
+          this.stopRecording();
+          console.log('recording stopped');
+        }, time * MILLI_SECS_IN_MIN);
       } catch (err) {
         this.logAndStopRecording('failed to start HD streaming' + err);
       }
@@ -89,7 +89,7 @@ class  HDHomeRunRecorder {
 
 const recorder = new HDHomeRunRecorder('10.1.1.56', 'tuner1');
 const recorder2 = new HDHomeRunRecorder('10.1.1.56', 'tuner1');
-recorder.start('25', 1);
-recorder2.start('14.1', 1);
+recorder.start('25', 1, 'temp1');
+recorder2.start('14.1', 1, 'temp2');
 
 
